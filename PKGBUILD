@@ -32,7 +32,8 @@ source=("$pkgname-$pkgver.tar.bz2::https://dist.schmorp.de/rxvt-unicode/$pkgname
         urxvtc.desktop
         urxvt-osc.patch
         secondaryWheel.patch
-        font-width-fix.patch)
+        font-width-fix.patch
+        24-bit-color.patch)
 sha512sums=('4d14ecbbb62de1b1c717277f5aae5cfb536e11392f2d4b82c884c1713f437fce8e9dd69a328fa353a55d068d8ee4121a31900f45191acec172d5dc76652b6255'
             'SKIP'
             'a09a434387e22612a9225ddfa444044977712c6410efe8a77a33d8aa607bd1acbef2a1da08b62e21a4b070f0974ba94ae907ac0452b5d060e33a1c051a7780e4'
@@ -41,7 +42,8 @@ sha512sums=('4d14ecbbb62de1b1c717277f5aae5cfb536e11392f2d4b82c884c1713f437fce8e9
             'aa501eeeb220ba03b3f101b160230612efbca87694fef88c469b2976d29769c24b34576ea82f6c7941fad6039ac776f32e397add9b957b49bf2e84aeb67b66d6'
             'ed6a799e0031f554f402de0683e39731d620c7448e369d2b6cb03fe4e9b02e4f3a955524a57b63ab5c25b4980a08f09a5582583d15119460dfdce5a1b0c0d291'
             'cb9bb0cf0f9b1f7006d7f49db7ca9b36003139015af8c8dca2aa60afd20a1b50dd2c098bb54f53fc82fa0b793463cb22b0ce54e9aadc22cf162bec6923de4cfe'
-            '8cc85d563e3d467c4ab6669886b69d884be29bb125ad75f8e55709521cdca9eca9c148e6f5b171c2c6c3941f0b58028077eea37b9ced701472c2f454a59e7bca')
+            '8cc85d563e3d467c4ab6669886b69d884be29bb125ad75f8e55709521cdca9eca9c148e6f5b171c2c6c3941f0b58028077eea37b9ced701472c2f454a59e7bca'
+            '267edf3d2e2a42696f79dea0390c87a19b4f4a80323af7592b672625da72dfd7f6aed827d0a824534b08349e3294e1483559103a23e5abf0361ed29c2ea31731')
 b2sums=('439a8c33b7260e0f2fd68b8a4409773c06c3bb7623b5dfbbb0742cc198c9fd25e8a247907878639db5fac3dcd3b6be3d839347787bcf08ca602ae246607f750b'
         'SKIP'
         '6d6bd90b77e67ccb876f0c78c710c9e1b82767a19aeadaac9310e5628b791586fc8475ad5179eaa2fee386ae80aae916226167ec92c5af309bba4052238326c8'
@@ -50,7 +52,8 @@ b2sums=('439a8c33b7260e0f2fd68b8a4409773c06c3bb7623b5dfbbb0742cc198c9fd25e8a2479
         '420a8820c165a2137cf9936acdc597ec696a5d75c30f8bbcfb0f3b75d04fdf4a9a4e3ae38a35372cfbf0497b2d115902aa18b2b38d292cf881fc19d1c113b7df'
         'a3d5933026ce980c0f2a1b12844d0ddd3ad48217fee4a730659c580a1cf06ed73260e574549ff6d64f726c06f2135f7bc9146066c887a1b961e75028360cdc6a'
         'ea6ea0cac2fbdfc450fe57a48b0871edd58d62aa8912a7de5d30a0c90f60b0b6c1d4680963bb1e3532516012562f6f1a55c1b967d57eb9fdc46e14a8536fab11'
-        '6be5d9626a41df2cb54c6288594681fdf53309c7b42852b5408bc8536728dfd3a343038763154a117746bc2e40d6341c1722ce9e3aa548b7c25dc0d9f8bf5626')
+        '6be5d9626a41df2cb54c6288594681fdf53309c7b42852b5408bc8536728dfd3a343038763154a117746bc2e40d6341c1722ce9e3aa548b7c25dc0d9f8bf5626'
+        '564371ab9873c5bf12a95e0a2807a166eb472ae37f1fe6b5e6afd8335ca106f40dbce152fa9df11531df74d75a734cb32be57921223bbd0e7db85f4e27bd0f13')
 
 prepare() {
   # hacking around to validate with signify
@@ -63,9 +66,15 @@ prepare() {
   # Fix OSC with 7-bit ST.
   patch -d $pkgname-$pkgver -p1 < urxvt-osc.patch
 
+  # https://aur.archlinux.org/cgit/aur.git/plain/secondaryWheel.patch\?h\=rxvt-unicode-fontspacing-noinc-vteclear-secondarywheel
   patch -d $pkgname-$pkgver -p1 < secondaryWheel.patch
 
+  # https://aur.archlinux.org/cgit/aur.git/plain/font-width-fix.patch\?h\=rxvt-unicode-fontspacing-noinc-vteclear-secondarywheel
   patch -d $pkgname-$pkgver -p1 < font-width-fix.patch
+
+  # https://aur.archlinux.org/cgit/aur.git/tree/24-bit-color.patch?h=rxvt-unicode-truecolor-wide-glyphs
+  patch -d $pkgname-$pkgver -p1 < 24-bit-color.patch
+
 }
 
 build() {
@@ -101,6 +110,7 @@ build() {
     --enable-xim
     --enable-xterm-scroll
     --disable-pixbuf
+    --enable-24-bit-color
   )
   
   export TIC="/usr/bin/tic -o${srcdir}/terminfo"
