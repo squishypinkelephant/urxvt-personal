@@ -1,0 +1,161 @@
+diff --git a/src/perl/tabbed.old b/src/perl/tabbed
+index d2308c8..df15390 100644
+--- a/src/perl/tabbed.old
++++ b/src/perl/tabbed
+@@ -344,45 +344,126 @@ sub tab_destroy {
+       $self->{destroy} = urxvt::iw->new->start->cb (sub { $self->destroy });
+    }
+ 
++
+    ()
+ }
+ 
+-sub tab_key_press {
+-   my ($self, $tab, $event, $keysym, $str) = @_;
+-
+-   if ($event->{state} & urxvt::ShiftMask) {
+-      if ($keysym == 0xff51 || $keysym == 0xff53) {
+-         my ($idx) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
+-
+-         --$idx if $keysym == 0xff51;
+-         ++$idx if $keysym == 0xff53;
+-
+-         $self->make_current ($self->{tabs}[$idx % @{ $self->{tabs}}]);
+-
+-         return 1;
+-      } elsif ($keysym == 0xff54) {
+-         $self->new_tab;
+-
+-         return 1;
+-      }
+-   }
+-   elsif ($event->{state} & urxvt::ControlMask) {
+-      if ($keysym == 0xff51 || $keysym == 0xff53) {
+-         my ($idx1) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
+-         my  $idx2  = ($idx1 + ($keysym == 0xff51 ? -1 : +1)) % @{ $self->{tabs} };
+-
+-         ($self->{tabs}[$idx1], $self->{tabs}[$idx2]) =
+-            ($self->{tabs}[$idx2], $self->{tabs}[$idx1]);
++my %SPECIAL_KEYS = (
++    0xff50 => 'Home',
++    0xff51 => 'Left',
++    0xff52 => 'Up',
++    0xff53 => 'Right',
++    0xff54 => 'Down',
++    0xff55 => 'Page_Up',
++    0xff56 => 'Page_Down',
++    0xff57 => 'End',
++    0xffbe => 'F1',  0xffbf => 'F2',  0xffc0 => 'F3',  0xffc1 => 'F4',
++    0xffc2 => 'F5',  0xffc3 => 'F6',  0xffc4 => 'F7',  0xffc5 => 'F8',
++    0xffc6 => 'F9',  0xffc7 => 'F10', 0xffc8 => 'F11', 0xffc9 => 'F12',
++);
++
++sub tabbed_key_action {
++    my ($self, $event, $keysym) = @_;
++
++    # 1) Try urxvt mapping first
++    my $sym = $urxvt::KEYSYM{$keysym};
++
++    # 2) If that failed, try the special-key table
++    $sym = $SPECIAL_KEYS{$keysym} unless defined $sym;
++
++    # 3) looks like an ASCII
++    if (!defined $sym && $keysym && $keysym < 256) {
++        $sym = chr($keysym);
++    }
++
++    # give up
++    return unless defined $sym && length $sym;
++
++    # Normalize single letters to lowercase
++    $sym = lc $sym if $sym =~ /^[A-Za-z]$/;
++
++    my $mod = "";
++    $mod .= "C-" if $event->{state} & urxvt::ControlMask;
++    $mod .= "S-" if $event->{state} & urxvt::ShiftMask;
++    $mod .= "M-" if $event->{state} & urxvt::Mod1Mask;
++
++    my $key = "keysym.$mod$sym";
++    # Look up resource
++    my $action = $self->x_resource($key);
++
++    return $action;
++}
+ 
+-         $self->make_current ($self->{tabs}[$idx2]);
+ 
+-         return 1;
+-      }
+-   }
++sub tab_key_press {
++   my ($self, $tab, $event, $keysym, $str) = @_;
++   if (my $action = $self->tabbed_key_action($event, $keysym)) {
++
++        if ($action eq "new_tab") {
++            $self->new_tab;
++            return 1;
++        }
++        elsif ($action eq "close_tab") {
++            $tab->destroy;
++            return 1;
++        }
++        elsif ($action eq "next_tab") {
++            $self->next_tab($tab);
++            return 1;
++        }
++        elsif ($action eq "prev_tab") {
++            $self->prev_tab($tab);
++            return 1;
++        }
++        elsif ($action eq "order_next_tab") {
++            $self->order_next_tab($tab);
++            return 1;
++        }
++        elsif ($action eq "order_prev_tab") {
++            $self->order_prev_tab($tab);
++            return 1;
++        }
++
++        # Unknown action → ignore
++        return 0;
++    }
+ 
+    ()
+ }
+ 
++sub next_tab {
++  my ($self, $tab) = @_;
++  my ($idx) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
++  ++$idx;
++    $self->make_current ($self->{tabs}[$idx % @{ $self->{tabs}}]);
++  ()
++}
++sub prev_tab {
++  my ($self, $tab) = @_;
++  my ($idx) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
++  --$idx;
++    $self->make_current ($self->{tabs}[$idx % @{ $self->{tabs}}]);
++  ()
++}
++sub order_next_tab {
++  my ($self, $tab) = @_;
++  my ($idx1) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
++    my  $idx2  = ($idx1 + 1) % @{ $self->{tabs} };
++    ($self->{tabs}[$idx1], $self->{tabs}[$idx2]) =
++      ($self->{tabs}[$idx2], $self->{tabs}[$idx1]);
++    $self->make_current ($self->{tabs}[$idx2]);
++  ()
++}
++sub order_prev_tab {
++  my ($self, $tab) = @_;
++  my ($idx1) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
++    my  $idx2  = ($idx1 - 1) % @{ $self->{tabs} };
++    ($self->{tabs}[$idx1], $self->{tabs}[$idx2]) =
++      ($self->{tabs}[$idx2], $self->{tabs}[$idx1]);
++    $self->make_current ($self->{tabs}[$idx2]);
++  ()
++}
++
+ sub tab_property_notify {
+    my ($self, $tab, $event) = @_;
+ 
